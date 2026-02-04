@@ -1,0 +1,127 @@
+# Legal Clause Risk Scorer - Default Configuration
+
+# Data Configuration
+data:
+  # Dataset sources
+  cuad_dataset: "cuad"
+  ledgar_dataset: "lexlms/ledgar"
+
+  # Data preprocessing
+  max_sequence_length: 512
+  truncation: true
+  padding: "max_length"
+
+  # Data splits
+  train_split: 0.7
+  val_split: 0.15
+  test_split: 0.15
+
+  # Risk scoring categories and weights
+  risk_categories:
+    termination_clauses:
+      weight: 0.25
+      keywords: ["terminate", "dismissal", "at-will", "without cause"]
+    non_compete:
+      weight: 0.20
+      keywords: ["non-compete", "restraint", "solicitation", "competitor"]
+    intellectual_property:
+      weight: 0.20
+      keywords: ["ip", "intellectual property", "invention", "patent", "copyright"]
+    confidentiality:
+      weight: 0.15
+      keywords: ["confidential", "nda", "proprietary", "trade secret"]
+    compensation_terms:
+      weight: 0.10
+      keywords: ["salary", "bonus", "commission", "overtime", "benefits"]
+    dispute_resolution:
+      weight: 0.10
+      keywords: ["arbitration", "mediation", "jurisdiction", "governing law"]
+
+# Model Configuration
+model:
+  # Base model
+  base_model: "microsoft/deberta-v3-base"
+  embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+
+  # Architecture
+  num_labels: 3  # low_risk, medium_risk, high_risk
+  dropout: 0.1
+  hidden_size: 768
+
+  # Risk scoring
+  risk_score_bins: 10  # 1-10 scale
+  classification_threshold: 0.5
+
+# Training Configuration
+training:
+  # Basic training params
+  batch_size: 16
+  learning_rate: 2e-5
+  num_epochs: 10
+  warmup_steps: 500
+  weight_decay: 0.01
+
+  # Optimization
+  optimizer: "AdamW"
+  scheduler: "linear"
+  gradient_accumulation_steps: 1
+  max_grad_norm: 1.0
+
+  # Early stopping
+  early_stopping_patience: 3
+  early_stopping_metric: "eval_f1"
+  early_stopping_mode: "max"
+
+  # Checkpointing
+  save_steps: 1000
+  eval_steps: 500
+  logging_steps: 100
+  save_total_limit: 3
+
+  # Mixed precision and device
+  fp16: true
+  use_cuda: true
+  dataloader_num_workers: 4
+
+# Evaluation Configuration
+evaluation:
+  # Metrics to track
+  metrics:
+    - "accuracy"
+    - "precision"
+    - "recall"
+    - "f1"
+    - "roc_auc"
+    - "mae"  # for risk scores
+
+  # Target performance thresholds
+  targets:
+    clause_detection_f1: 0.82
+    risk_score_mae: 1.2
+    unfavorable_term_recall: 0.88
+
+# MLflow Configuration
+mlflow:
+  experiment_name: "legal_clause_risk_scorer"
+  tracking_uri: "mlruns"
+  artifact_location: "artifacts"
+
+# Logging Configuration
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/training.log"
+
+# Random Seeds for Reproducibility
+random_seed: 42
+torch_seed: 42
+numpy_seed: 42
+transformers_seed: 42
+
+# Output Paths
+paths:
+  data_dir: "data"
+  models_dir: "models"
+  logs_dir: "logs"
+  cache_dir: ".cache"
+  outputs_dir: "outputs"
