@@ -55,18 +55,19 @@ class LegalDataLoader:
 
         logger.info(f"Initialized data loader with tokenizer: {tokenizer_name}")
 
-    def load_cuad_dataset(self) -> Dataset:
+    def load_cuad_dataset(self) -> Optional[Dataset]:
         """Load and preprocess the CUAD dataset.
 
-        Returns:
-            Preprocessed CUAD dataset with risk labels
+        The CUAD dataset on HuggingFace uses a legacy loading script format
+        that may not be supported by newer versions of the datasets library.
+        If loading fails, returns None so training can proceed with LEDGAR only.
 
-        Raises:
-            RuntimeError: If dataset loading fails
+        Returns:
+            Preprocessed CUAD dataset with risk labels, or None if unavailable
         """
         try:
             logger.info("Loading CUAD dataset...")
-            dataset_name = self.config.get('data.cuad_dataset', 'cuad')
+            dataset_name = self.config.get('data.cuad_dataset', 'theatticusproject/cuad-qa')
             dataset = load_dataset(dataset_name)
 
             # Process the dataset to extract clause information
@@ -76,41 +77,44 @@ class LegalDataLoader:
                 logger.info(f"Processing CUAD {split_name} split: {len(split_data)} samples")
 
                 for example in split_data:
-                    # Extract contract text and answers
+                    # The CUAD-QA dataset has SQuAD-like format:
+                    # context, question, answers (with text and answer_start)
                     context = example.get('context', '')
-                    questions = example.get('qas', [])
+                    question = example.get('question', '')
+                    answers = example.get('answers', {})
 
-                    for qa in questions:
-                        question = qa.get('question', '')
-                        answers = qa.get('answers', [])
+                    # Extract clause type from question
+                    clause_type = self._extract_clause_type(question)
 
-                        # Extract clause type from question
-                        clause_type = self._extract_clause_type(question)
+                    # Process answers - in SQuAD format answers is a dict
+                    # with 'text' (list of strings) and 'answer_start' (list of ints)
+                    answer_texts = answers.get('text', []) if isinstance(answers, dict) else []
+                    answer_starts = answers.get('answer_start', []) if isinstance(answers, dict) else []
 
-                        # Process each answer
-                        for answer in answers:
-                            answer_text = answer.get('text', '')
-                            start_idx = answer.get('answer_start', 0)
+                    for answer_text, start_idx in zip(answer_texts, answer_starts):
+                        if answer_text.strip():
+                            # Extract surrounding context
+                            clause_context = self._extract_clause_context(
+                                context, answer_text, start_idx
+                            )
 
-                            if answer_text.strip():
-                                # Extract surrounding context
-                                clause_context = self._extract_clause_context(
-                                    context, answer_text, start_idx
-                                )
+                            # Calculate risk score
+                            risk_score = self._calculate_risk_score(
+                                clause_type, clause_context, answer_text
+                            )
 
-                                # Calculate risk score
-                                risk_score = self._calculate_risk_score(
-                                    clause_type, clause_context, answer_text
-                                )
+                            processed_data.append({
+                                'text': clause_context,
+                                'clause_text': answer_text,
+                                'clause_type': clause_type,
+                                'risk_score': risk_score,
+                                'risk_category': self._get_risk_category(risk_score),
+                                'source': 'cuad'
+                            })
 
-                                processed_data.append({
-                                    'text': clause_context,
-                                    'clause_text': answer_text,
-                                    'clause_type': clause_type,
-                                    'risk_score': risk_score,
-                                    'risk_category': self._get_risk_category(risk_score),
-                                    'source': 'cuad'
-                                })
+            if not processed_data:
+                logger.warning("CUAD dataset loaded but no processable samples found")
+                return None
 
             # Convert to dataset
             df = pd.DataFrame(processed_data)
@@ -120,11 +124,15 @@ class LegalDataLoader:
             return dataset
 
         except Exception as e:
-            logger.error(f"Error loading CUAD dataset: {e}")
-            raise RuntimeError(f"Failed to load CUAD dataset: {e}")
+            logger.warning(f"CUAD dataset unavailable (will proceed with LEDGAR only): {e}")
+            return None
 
     def load_ledgar_dataset(self) -> Dataset:
-        """Load and preprocess the LEDGAR dataset.
+        """Load and preprocess the LEDGAR dataset from coastalcph/lex_glue.
+
+        LEDGAR is a contract provision classification dataset. Each example
+        is a single clause/provision with an integer label. We use the text
+        directly and compute risk scores from content analysis.
 
         Returns:
             Preprocessed LEDGAR dataset with risk labels
@@ -133,9 +141,8 @@ class LegalDataLoader:
             RuntimeError: If dataset loading fails
         """
         try:
-            logger.info("Loading LEDGAR dataset...")
-            dataset_name = self.config.get('data.ledgar_dataset', 'lexlms/ledgar')
-            dataset = load_dataset(dataset_name)
+            logger.info("Loading LEDGAR dataset from coastalcph/lex_glue...")
+            dataset = load_dataset('coastalcph/lex_glue', 'ledgar')
 
             processed_data = []
 
@@ -144,29 +151,25 @@ class LegalDataLoader:
 
                 for example in split_data:
                     text = example.get('text', '')
-                    labels = example.get('labels', [])
 
-                    if text.strip():
-                        # Extract clauses from legal text
-                        clauses = self._extract_clauses_from_text(text)
+                    if text.strip() and len(text) >= 30:
+                        # Each example is already a single clause/provision
+                        # Determine clause type from content
+                        clause_type = self._infer_clause_type(text)
 
-                        for clause_text in clauses:
-                            # Determine clause type from content
-                            clause_type = self._infer_clause_type(clause_text)
+                        # Calculate risk score from content
+                        risk_score = self._calculate_risk_score(
+                            clause_type, text, text
+                        )
 
-                            # Calculate risk score
-                            risk_score = self._calculate_risk_score(
-                                clause_type, text, clause_text
-                            )
-
-                            processed_data.append({
-                                'text': clause_text,
-                                'clause_text': clause_text,
-                                'clause_type': clause_type,
-                                'risk_score': risk_score,
-                                'risk_category': self._get_risk_category(risk_score),
-                                'source': 'ledgar'
-                            })
+                        processed_data.append({
+                            'text': text,
+                            'clause_text': text,
+                            'clause_type': clause_type,
+                            'risk_score': risk_score,
+                            'risk_category': self._get_risk_category(risk_score),
+                            'source': 'ledgar'
+                        })
 
             # Convert to dataset
             df = pd.DataFrame(processed_data)
@@ -182,6 +185,8 @@ class LegalDataLoader:
     def combine_datasets(self) -> DatasetDict:
         """Combine CUAD and LEDGAR datasets and create train/val/test splits.
 
+        CUAD is optional -- if it fails to load, training proceeds with LEDGAR only.
+
         Returns:
             Combined dataset with train/validation/test splits
 
@@ -191,16 +196,20 @@ class LegalDataLoader:
         try:
             logger.info("Combining datasets...")
 
-            # Load individual datasets
+            # Load individual datasets (CUAD is optional)
             cuad_data = self.load_cuad_dataset()
             ledgar_data = self.load_ledgar_dataset()
 
             # Combine datasets
             combined_data = []
 
-            # Add CUAD data
-            for example in cuad_data:
-                combined_data.append(example)
+            # Add CUAD data (may be None)
+            if cuad_data is not None:
+                for example in cuad_data:
+                    combined_data.append(example)
+                logger.info(f"Added {len(cuad_data)} CUAD samples")
+            else:
+                logger.info("CUAD dataset not available, proceeding with LEDGAR only")
 
             # Add LEDGAR data
             for example in ledgar_data:

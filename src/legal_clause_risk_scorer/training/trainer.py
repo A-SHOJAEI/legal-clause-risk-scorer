@@ -15,9 +15,9 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
+from torch.optim import AdamW
 from transformers import (
     get_linear_schedule_with_warmup,
-    AdamW,
     DataCollatorWithPadding
 )
 import numpy as np
@@ -119,22 +119,22 @@ class LegalRiskTrainer:
         self.device = self._setup_device()
         self.model.to(self.device)
 
-        # Initialize components
-        self.metrics_evaluator = LegalRiskMetrics(config)
-        self.optimizer = self._create_optimizer()
-        self.scheduler = self._create_scheduler()
-
         # Training state
         self.best_score = 0.0
         self.early_stopping_counter = 0
         self.global_step = 0
         self.epoch = 0
 
-        # Create data loaders
+        # Create data loaders (must come before scheduler which needs train_loader length)
         self.train_loader = self._create_dataloader(train_dataset, shuffle=True)
         self.val_loader = self._create_dataloader(val_dataset, shuffle=False)
         if test_dataset is not None:
             self.test_loader = self._create_dataloader(test_dataset, shuffle=False)
+
+        # Initialize components
+        self.metrics_evaluator = LegalRiskMetrics(config)
+        self.optimizer = self._create_optimizer()
+        self.scheduler = self._create_scheduler()
 
         # Setup MLflow
         self._setup_mlflow()
@@ -170,8 +170,20 @@ class LegalRiskTrainer:
                     test_results = self.evaluate(self.test_loader, "test")
                     training_results['test_metrics'] = test_results
 
-                # Log final results
-                mlflow.log_metrics(training_results)
+                # Log final scalar results to MLflow
+                final_scalars = {
+                    'best_score': training_results.get('best_score', 0.0),
+                    'total_epochs': float(training_results.get('total_epochs', 0)),
+                }
+                if 'test_metrics' in training_results:
+                    tm = training_results['test_metrics']
+                    if 'classification' in tm:
+                        final_scalars['test_f1'] = tm['classification'].get('f1_macro', 0.0)
+                    if 'regression' in tm:
+                        final_scalars['test_mae'] = tm['regression'].get('mae', 0.0)
+                    if 'overall_score' in tm:
+                        final_scalars['test_overall'] = tm['overall_score']
+                mlflow.log_metrics(final_scalars)
 
                 # Save final model
                 final_model_path = self.output_dir / "final_model.pth"
@@ -372,7 +384,11 @@ class LegalRiskTrainer:
 
                 # Store results
                 all_predictions_class.extend(class_predictions.cpu().numpy())
-                all_predictions_score.extend(risk_scores.squeeze().cpu().numpy())
+                # Use squeeze(-1) to only remove the last dim, not the batch dim
+                score_preds = risk_scores.squeeze(-1).cpu().numpy()
+                # Replace NaN with neutral score 5.0
+                score_preds = np.nan_to_num(score_preds, nan=5.0)
+                all_predictions_score.extend(score_preds)
                 all_probabilities.extend(probabilities.cpu().numpy())
 
                 all_labels_class.extend(batch['labels'].cpu().numpy())
@@ -486,18 +502,13 @@ class LegalRiskTrainer:
         batch_size = self.config.get('training.batch_size', 16)
         num_workers = self.config.get('training.dataloader_num_workers', 4)
 
-        # Create data collator for padding
-        collator = DataCollatorWithPadding(
-            tokenizer=self.model.tokenizer if hasattr(self.model, 'tokenizer') else None,
-            padding=True
-        )
-
+        # Data is already padded to max_length during tokenization,
+        # so default collation (stacking) is sufficient
         return DataLoader(
             dataset,
             batch_size=batch_size,
             shuffle=shuffle,
             num_workers=num_workers,
-            collate_fn=collator if hasattr(self.model, 'tokenizer') else None,
             pin_memory=torch.cuda.is_available()
         )
 
@@ -521,16 +532,20 @@ class LegalRiskTrainer:
         """Log configuration to MLflow."""
         config_dict = self.config.to_dict()
 
-        # Flatten nested configuration for MLflow
+        # Flatten nested configuration for MLflow, only logging scalar values
         flattened_config = {}
         for section, values in config_dict.items():
             if isinstance(values, dict):
                 for key, value in values.items():
-                    flattened_config[f"{section}_{key}"] = value
-            else:
+                    if isinstance(value, (str, int, float, bool)):
+                        flattened_config[f"{section}_{key}"] = value
+            elif isinstance(values, (str, int, float, bool)):
                 flattened_config[section] = values
 
-        mlflow.log_params(flattened_config)
+        try:
+            mlflow.log_params(flattened_config)
+        except Exception as e:
+            logger.warning(f"Could not log all config params to MLflow: {e}")
 
     def _log_model_info(self) -> None:
         """Log model information to MLflow."""

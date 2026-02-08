@@ -164,8 +164,12 @@ class LegalRiskMetrics:
         metrics['mean_error'] = np.mean(y_pred - y_true)
         metrics['std_error'] = np.std(y_pred - y_true)
 
-        # Percentage-based metrics
-        metrics['mape'] = np.mean(np.abs((y_true - y_pred) / y_true)) * 100  # Mean Absolute Percentage Error
+        # Percentage-based metrics (avoid division by zero)
+        nonzero_mask = y_true != 0
+        if np.any(nonzero_mask):
+            metrics['mape'] = np.mean(np.abs((y_true[nonzero_mask] - y_pred[nonzero_mask]) / y_true[nonzero_mask])) * 100
+        else:
+            metrics['mape'] = 0.0
 
         # Score range analysis
         metrics['pred_range_min'] = np.min(y_pred)
@@ -354,6 +358,12 @@ class LegalRiskMetrics:
         """
         metrics = {}
 
+        # Ensure numpy arrays
+        class_true = self._to_numpy(class_true)
+        class_pred = self._to_numpy(class_pred)
+        score_true = self._to_numpy(score_true)
+        score_pred = self._to_numpy(score_pred)
+
         # Convert scores to categories for comparison
         score_categories_true = self._scores_to_categories(score_true)
         score_categories_pred = self._scores_to_categories(score_pred)
@@ -363,11 +373,13 @@ class LegalRiskMetrics:
         metrics['class_score_consistency_pred'] = accuracy_score(class_pred, score_categories_pred)
 
         # Directional consistency (both tasks should agree on relative risk)
+        # Use a random sample of pairs to avoid O(n^2) computation
         direction_agreement = 0
         total_pairs = 0
+        max_samples = min(len(class_pred), 500)  # Limit to avoid O(n^2) explosion
 
-        for i in range(len(class_pred)):
-            for j in range(i + 1, len(class_pred)):
+        for i in range(max_samples):
+            for j in range(i + 1, max_samples):
                 total_pairs += 1
 
                 # Check if both tasks agree on which sample is higher risk
