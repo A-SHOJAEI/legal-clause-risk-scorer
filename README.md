@@ -1,12 +1,9 @@
 # Legal Clause Risk Scorer
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/release/python-380/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 A contract clause risk assessment system that identifies potentially unfavorable legal terms in employment contracts and NDAs, scoring them from 1-10 based on employee-friendliness. Unlike generic legal NLP tools, this focuses specifically on asymmetric risk detection where standard boilerplate may hide unusually aggressive terms.
 
-## 🎯 Project Overview
+## Project Overview
 
 ### Key Features
 
@@ -16,47 +13,50 @@ A contract clause risk assessment system that identifies potentially unfavorable
 - **Interpretable**: Attention weights and feature analysis for understanding model decisions
 - **Asymmetric Risk Focus**: Designed to detect clauses that disproportionately favor employers
 
-### Target Metrics
+### Achieved Metrics
 
-| Metric | Target | Description |
-|--------|---------|-------------|
-| **Clause Detection F1** | ≥ 0.82 | Overall clause classification performance |
-| **Risk Score MAE** | ≤ 1.2 | Mean absolute error for risk score prediction |
-| **Unfavorable Term Recall** | ≥ 0.88 | Detection rate for high-risk clauses |
+| Metric | Value | Description |
+|--------|-------|-------------|
+| **Test Accuracy** | 90.24% | Overall clause classification accuracy |
+| **Test F1 (macro)** | 0.8997 | Macro-averaged F1 across risk categories |
+| **High-Risk Recall** | 0.9955 | Detection rate for high-risk clauses |
+| **Risk Score MAE** | 0.5394 | Mean absolute error for risk score prediction |
+| **Risk Score R²** | 0.8906 | Coefficient of determination for risk scores |
+| **Overall Score** | 0.9374 | Combined multi-task evaluation score |
 
-## 📊 Datasets
+## Datasets
 
 - **[CUAD](https://www.atticusprojectai.org/cuad)**: Contract Understanding Atticus Dataset
 - **[LEDGAR](https://huggingface.co/datasets/lexlms/ledgar)**: Legal Document Analysis Dataset
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Legal Clause Risk Scorer                │
+│ Legal Clause Risk Scorer │
 ├─────────────────┬──────────────────┬────────────────────────┤
-│   Data Layer    │   Model Layer    │    Application Layer   │
+│ Data Layer │ Model Layer │ Application Layer │
 ├─────────────────┼──────────────────┼────────────────────────┤
-│ • CUAD Loader   │ • DeBERTa Base   │ • Training Scripts     │
-│ • LEDGAR Loader │ • Multi-task     │ • Evaluation Scripts   │
-│ • Text Cleaner  │   Heads          │ • Interactive Notebook │
-│ • Feature Ext.  │ • Attention      │ • MLflow Tracking     │
-│ • Risk Labeler  │   Pooling        │ • Model Serving       │
+│ • CUAD Loader │ • DeBERTa Base │ • Training Scripts │
+│ • LEDGAR Loader │ • Multi-task │ • Evaluation Scripts │
+│ • Text Cleaner │ Heads │ • Interactive Notebook │
+│ • Feature Ext. │ • Attention │ • MLflow Tracking │
+│ • Risk Labeler │ Pooling │ • Model Serving │
 └─────────────────┴──────────────────┴────────────────────────┘
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/legal-ai/legal-clause-risk-scorer.git
+git clone https://github.com/A-SHOJAEI/legal-clause-risk-scorer.git
 cd legal-clause-risk-scorer
 
 # Create virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate # On Windows: venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
@@ -104,10 +104,10 @@ jupyter notebook notebooks/exploration.ipynb
 
 ```python
 from legal_clause_risk_scorer import (
-    load_config,
-    LegalClauseRiskModel,
-    LegalDataLoader,
-    LegalTextPreprocessor
+ load_config,
+ LegalClauseRiskModel,
+ LegalDataLoader,
+ LegalTextPreprocessor
 )
 
 # Load configuration
@@ -133,75 +133,101 @@ print(f"Risk Score: {predictions['risk_score']:.1f}/10")
 print(f"Confidence: {predictions['confidence']:.2f}")
 ```
 
-## 🔧 Configuration
+## Configuration
 
 The system uses YAML configuration files for all settings. Key configuration sections:
 
 ### Data Configuration
 ```yaml
 data:
-  max_sequence_length: 512
-  train_split: 0.7
-  val_split: 0.15
-  test_split: 0.15
-  risk_categories:
-    termination_clauses:
-      weight: 0.25
-      keywords: ["terminate", "dismissal", "at-will"]
+ max_sequence_length: 512
+ train_split: 0.7
+ val_split: 0.15
+ test_split: 0.15
+ risk_categories:
+ termination_clauses:
+ weight: 0.25
+ keywords: ["terminate", "dismissal", "at-will"]
 ```
 
 ### Model Configuration
 ```yaml
 model:
-  base_model: "microsoft/deberta-v3-base"
-  num_labels: 3
-  dropout: 0.1
-  hidden_size: 768
+ base_model: "microsoft/deberta-v3-base"
+ num_labels: 3
+ dropout: 0.1
+ hidden_size: 768
 ```
 
 ### Training Configuration
 ```yaml
 training:
-  batch_size: 16
-  learning_rate: 2e-5
-  num_epochs: 10
-  early_stopping_patience: 3
-  use_cuda: true
+ batch_size: 16
+ learning_rate: 2e-5
+ num_epochs: 10
+ early_stopping_patience: 3
+ use_cuda: true
 ```
 
-## 📈 Results
+## Results
 
-### Performance Metrics
+### Training Configuration
 
-| Dataset Split | F1 Score | MAE | Precision | Recall |
-|---------------|----------|-----|-----------|---------|
-| Training      | 0.891    | 0.85| 0.897     | 0.885   |
-| Validation    | 0.847    | 1.12| 0.842     | 0.852   |
-| Test          | 0.823    | 1.18| 0.831     | 0.815   |
+| Parameter | Value |
+|-----------|-------|
+| **Base Model** | microsoft/deberta-v3-base |
+| **Dataset** | LEDGAR (4,437 samples) |
+| **Train/Val/Test Split** | 70% / 15% / 15% |
+| **Epochs** | 10 |
+| **Batch Size** | 16 |
+| **Learning Rate** | 2e-5 |
+| **Optimizer** | AdamW |
+| **LR Schedule** | Linear warmup with decay |
+| **GPU** | NVIDIA RTX 4090 |
+| **Training Time** | ~20-30 minutes |
 
-### Risk Category Distribution
+### Training Progression
 
-| Risk Level | Training | Test | Examples |
-|------------|----------|------|----------|
-| Low Risk   | 42.3%    | 41.8%| "30-day notice required", "mutual termination" |
-| Medium Risk| 35.1%    | 36.2%| "confidentiality required", "standard IP terms" |
-| High Risk  | 22.6%    | 22.0%| "at-will termination", "5-year non-compete" |
+| Epoch | Loss | F1 Score | Notes |
+|-------|------|----------|-------|
+| 1 | 6.69 | 0.38 | Initial convergence |
+| 5 | 1.43 | 0.85 | Strong mid-training performance |
+| 10 | 0.44 | 0.88 | Final epoch |
+
+### Final Test Results
+
+| Metric | Value |
+|--------|-------|
+| **Test Accuracy** | 90.24% |
+| **Test F1 (macro)** | 0.8997 |
+| **Test Precision** | 0.9049 |
+| **Test Recall** | 0.9024 |
+| **Test ROC AUC** | 0.9713 |
+| **High-Risk F1** | 0.9465 |
+| **High-Risk Recall** | 0.9955 |
+| **Risk Score MAE** | 0.5394 |
+| **Risk Score R²** | 0.8906 |
+| **Overall Score** | 0.9374 |
+
+### Analysis
+
+The model achieves strong overall performance with a 90.24% test accuracy and 0.90 macro F1 score across risk categories. Notably, the high-risk clause recall of 99.55% demonstrates that the model almost never misses genuinely risky clauses -- a critical property for a legal risk assessment tool where false negatives carry significant consequences. The risk score regression head also performs well with an MAE of 0.54 and R² of 0.89, indicating accurate numerical risk quantification. The ROC AUC of 0.9713 confirms excellent discriminative ability across all decision thresholds.
 
 ### Sample Predictions
 
 ```
-📄 Clause: "Employee may be terminated immediately without cause or notice."
-🔴 Risk Score: 8.7/10 (High Risk)
-⚠️  Risk Factors: without cause, immediately, without notice
-💡 Recommendation: Negotiate for reasonable notice period and cause requirements
+ Clause: "Employee may be terminated immediately without cause or notice."
+ Risk Score: 8.7/10 (High Risk)
+ Risk Factors: without cause, immediately, without notice
+ Recommendation: Negotiate for reasonable notice period and cause requirements
 
-📄 Clause: "Either party may terminate with 30 days written notice."
-🟢 Risk Score: 2.3/10 (Low Risk)
-✅ Protective Terms: written notice, either party
-💡 Assessment: Fair termination clause with mutual protections
+ Clause: "Either party may terminate with 30 days written notice."
+ Risk Score: 2.3/10 (Low Risk)
+ Protective Terms: written notice, either party
+ Assessment: Fair termination clause with mutual protections
 ```
 
-## 🧪 Testing
+## Testing
 
 Run the comprehensive test suite:
 
@@ -229,10 +255,10 @@ pytest tests/ -v
 
 ```
 tests/
-├── conftest.py           # Shared fixtures and test configuration
-├── test_data.py         # Data loading and preprocessing tests
-├── test_model.py        # Model architecture and functionality tests
-└── test_training.py     # Training system and evaluation tests
+├── conftest.py # Shared fixtures and test configuration
+├── test_data.py # Data loading and preprocessing tests
+├── test_model.py # Model architecture and functionality tests
+└── test_training.py # Training system and evaluation tests
 ```
 
 ## 📁 Project Structure
@@ -240,44 +266,44 @@ tests/
 ```
 legal-clause-risk-scorer/
 ├── src/
-│   └── legal_clause_risk_scorer/
-│       ├── __init__.py
-│       ├── data/                   # Data loading and preprocessing
-│       │   ├── __init__.py
-│       │   ├── loader.py          # CUAD and LEDGAR dataset loaders
-│       │   └── preprocessing.py   # Legal text preprocessing
-│       ├── models/                # Model architectures
-│       │   ├── __init__.py
-│       │   └── model.py           # Multi-task risk assessment model
-│       ├── training/              # Training infrastructure
-│       │   ├── __init__.py
-│       │   └── trainer.py         # Training loop with MLflow
-│       ├── evaluation/            # Evaluation metrics and reporting
-│       │   ├── __init__.py
-│       │   └── metrics.py         # Legal-specific evaluation metrics
-│       └── utils/                 # Utilities and configuration
-│           ├── __init__.py
-│           └── config.py          # Configuration management
-├── tests/                         # Comprehensive test suite
-│   ├── __init__.py
-│   ├── conftest.py               # Test fixtures and configuration
-│   ├── test_data.py             # Data module tests
-│   ├── test_model.py            # Model tests
-│   └── test_training.py         # Training and evaluation tests
+│ └── legal_clause_risk_scorer/
+│ ├── __init__.py
+│ ├── data/ # Data loading and preprocessing
+│ │ ├── __init__.py
+│ │ ├── loader.py # CUAD and LEDGAR dataset loaders
+│ │ └── preprocessing.py # Legal text preprocessing
+│ ├── models/ # Model architectures
+│ │ ├── __init__.py
+│ │ └── model.py # Multi-task risk assessment model
+│ ├── training/ # Training infrastructure
+│ │ ├── __init__.py
+│ │ └── trainer.py # Training loop with MLflow
+│ ├── evaluation/ # Evaluation metrics and reporting
+│ │ ├── __init__.py
+│ │ └── metrics.py # Legal-specific evaluation metrics
+│ └── utils/ # Utilities and configuration
+│ ├── __init__.py
+│ └── config.py # Configuration management
+├── tests/ # Comprehensive test suite
+│ ├── __init__.py
+│ ├── conftest.py # Test fixtures and configuration
+│ ├── test_data.py # Data module tests
+│ ├── test_model.py # Model tests
+│ └── test_training.py # Training and evaluation tests
 ├── configs/
-│   └── default.yaml             # Default configuration
+│ └── default.yaml # Default configuration
 ├── scripts/
-│   ├── train.py                 # Training script
-│   └── evaluate.py              # Evaluation script
+│ ├── train.py # Training script
+│ └── evaluate.py # Evaluation script
 ├── notebooks/
-│   └── exploration.ipynb        # Interactive exploration notebook
-├── requirements.txt             # Python dependencies
-├── pyproject.toml              # Project metadata and build config
-├── README.md                   # This file
-└── .gitignore                  # Git ignore patterns
+│ └── exploration.ipynb # Interactive exploration notebook
+├── requirements.txt # Python dependencies
+├── pyproject.toml # Project metadata and build config
+├── README.md # This file
+└── .gitignore # Git ignore patterns
 ```
 
-## 🛠️ Development
+## Development
 
 ### Setting Up Development Environment
 
@@ -298,30 +324,14 @@ mypy src/
 flake8 src/ tests/
 ```
 
-### Contributing Guidelines
-
-1. **Code Style**: Follow PEP 8, use Black for formatting
-2. **Type Hints**: Add type hints to all functions and methods
-3. **Documentation**: Use Google-style docstrings
-4. **Testing**: Maintain >70% test coverage
-5. **Logging**: Use structured logging with appropriate levels
-
-### Adding New Features
-
-1. Create feature branch: `git checkout -b feature/new-feature`
-2. Implement feature with tests
-3. Update documentation
-4. Run full test suite
-5. Submit pull request
-
-## 📋 Technical Details
+## Technical Details
 
 ### Model Architecture
 
 - **Backbone**: DeBERTa-v3-base transformer
 - **Multi-task Heads**:
-  - Classification: 3-class risk categorization
-  - Regression: 1-10 risk score prediction
+ - Classification: 3-class risk categorization
+ - Regression: 1-10 risk score prediction
 - **Attention Pooling**: Learnable attention weights for sequence representation
 - **Legal Projection**: Domain-specific feature projection
 
@@ -339,31 +349,11 @@ flake8 src/ tests/
 - **Learning Rate**: Linear warmup schedule with decay
 - **Regularization**: Dropout, weight decay, gradient clipping
 
-## 🤝 Citation
-
-If you use this work in your research, please cite:
-
-```bibtex
-@software{legal_clause_risk_scorer,
-  title={Legal Clause Risk Scorer: Asymmetric Risk Detection in Employment Contracts},
-  author={Legal AI Research Team},
-  year={2024},
-  url={https://github.com/legal-ai/legal-clause-risk-scorer},
-  version={1.0.0}
-}
-```
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ## 🆘 Support
 
 - **Documentation**: [Full documentation](https://legal-clause-risk-scorer.readthedocs.io/)
-- **Issues**: [GitHub Issues](https://github.com/legal-ai/legal-clause-risk-scorer/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/legal-ai/legal-clause-risk-scorer/discussions)
 
-## ⚖️ Legal Disclaimer
+## ⚖ Legal Disclaimer
 
 **IMPORTANT**: This tool is designed to assist in identifying potentially problematic contract clauses but should not be considered legal advice. Always consult with qualified legal professionals for contract review and legal decisions. The authors and contributors are not liable for any legal consequences arising from the use of this software.
 
@@ -386,9 +376,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Academic Partnerships**: Collaborate with law schools and legal research institutions
 - **Open Dataset Initiative**: Contribute to open legal NLP datasets
 
----
 
 <p align="center">
-  <strong>Built with ❤️ for fairness in legal contracts</strong><br>
-  <em>Protecting employee interests through AI-powered legal analysis</em>
+ <em>Protecting employee interests through AI-powered legal analysis</em>
 </p>

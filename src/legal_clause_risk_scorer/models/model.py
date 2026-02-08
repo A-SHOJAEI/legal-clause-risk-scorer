@@ -14,7 +14,6 @@ import numpy as np
 from transformers import (
     AutoModel,
     AutoConfig,
-    PreTrainedModel,
     AutoTokenizer
 )
 from sentence_transformers import SentenceTransformer
@@ -25,14 +24,14 @@ from ..utils.config import Config
 logger = logging.getLogger(__name__)
 
 
-class LegalClauseRiskModel(PreTrainedModel):
+class LegalClauseRiskModel(nn.Module):
     """Multi-task model for legal clause risk assessment.
 
     This model performs both classification (risk category) and regression
     (risk score) tasks using a shared transformer backbone with task-specific heads.
 
     Attributes:
-        config: Model configuration
+        app_config: Application configuration
         backbone: Transformer backbone model
         classifier_head: Classification head for risk categories
         regression_head: Regression head for risk scores
@@ -40,20 +39,15 @@ class LegalClauseRiskModel(PreTrainedModel):
         dropout: Dropout layer
     """
 
-    def __init__(self, config: Config, model_config: Optional[AutoConfig] = None):
+    def __init__(self, config: Config):
         """Initialize the risk assessment model.
 
         Args:
             config: Application configuration
-            model_config: Transformer model configuration
         """
-        if model_config is None:
-            model_name = config.get('model.base_model', 'microsoft/deberta-v3-base')
-            model_config = AutoConfig.from_pretrained(model_name)
+        super().__init__()
 
-        super().__init__(model_config)
-
-        self.config = config
+        self.app_config = config
         self.num_labels = config.get('model.num_labels', 3)
         self.hidden_size = config.get('model.hidden_size', 768)
         self.dropout_rate = config.get('model.dropout', 0.1)
@@ -68,26 +62,23 @@ class LegalClauseRiskModel(PreTrainedModel):
         # Initialize additional components
         self._init_additional_components()
 
-        # Initialize weights
-        self.init_weights()
-
         logger.info(f"Initialized LegalClauseRiskModel with {self.num_parameters()} parameters")
 
     def _init_backbone(self) -> None:
         """Initialize the transformer backbone."""
-        model_name = self.config.get('model.base_model', 'microsoft/deberta-v3-base')
+        model_name = self.app_config.get('model.base_model', 'microsoft/deberta-v3-base')
 
         try:
             self.backbone = AutoModel.from_pretrained(
                 model_name,
-                config=self.config
+                torch_dtype=torch.float32
             )
         except Exception as e:
             logger.error(f"Failed to load backbone model {model_name}: {e}")
             raise
 
         # Freeze backbone if specified
-        if self.config.get('model.freeze_backbone', False):
+        if self.app_config.get('model.freeze_backbone', False):
             for param in self.backbone.parameters():
                 param.requires_grad = False
             logger.info("Backbone parameters frozen")
@@ -127,8 +118,8 @@ class LegalClauseRiskModel(PreTrainedModel):
 
         # Feature projection for additional features (if used)
         self.feature_projection = None
-        if self.config.get('model.use_additional_features', False):
-            feature_dim = self.config.get('model.additional_feature_dim', 50)
+        if self.app_config.get('model.use_additional_features', False):
+            feature_dim = self.app_config.get('model.additional_feature_dim', 50)
             self.feature_projection = nn.Linear(feature_dim, self.hidden_size // 4)
 
         # Multi-head attention for clause-specific modeling
@@ -233,8 +224,8 @@ class LegalClauseRiskModel(PreTrainedModel):
             # Combine losses
             if loss_components:
                 # Weight the losses
-                classification_weight = self.config.get('training.classification_weight', 1.0)
-                regression_weight = self.config.get('training.regression_weight', 1.0)
+                classification_weight = self.app_config.get('training.classification_weight', 1.0)
+                regression_weight = self.app_config.get('training.regression_weight', 1.0)
 
                 total_loss = 0.0
                 if classification_loss is not None:

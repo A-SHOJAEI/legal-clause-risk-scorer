@@ -56,7 +56,7 @@ model:
 training:
   # Basic training params
   batch_size: 16
-  learning_rate: 2e-5
+  learning_rate: 0.00002
   num_epochs: 10
   warmup_steps: 500
   weight_decay: 0.01

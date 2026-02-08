@@ -249,23 +249,28 @@ def save_training_artifacts(config, results, output_dir):
 
     # Save training results
     import json
-    with open(output_dir / "training_results.json", 'w') as f:
-        # Convert numpy arrays to lists for JSON serialization
-        serializable_results = {}
-        for key, value in results.items():
-            if isinstance(value, dict):
-                serializable_results[key] = {}
-                for sub_key, sub_value in value.items():
-                    if hasattr(sub_value, 'tolist'):
-                        serializable_results[key][sub_key] = sub_value.tolist()
-                    else:
-                        serializable_results[key][sub_key] = sub_value
-            elif hasattr(value, 'tolist'):
-                serializable_results[key] = value.tolist()
-            else:
-                serializable_results[key] = value
+    import numpy as np
 
-        json.dump(serializable_results, f, indent=2)
+    def make_serializable(obj):
+        """Recursively convert numpy types to native Python types for JSON."""
+        if isinstance(obj, dict):
+            return {k: make_serializable(v) for k, v in obj.items()}
+        elif isinstance(obj, (list, tuple)):
+            return [make_serializable(v) for v in obj]
+        elif isinstance(obj, (np.integer,)):
+            return int(obj)
+        elif isinstance(obj, (np.floating,)):
+            return float(obj)
+        elif isinstance(obj, (np.bool_,)):
+            return bool(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif hasattr(obj, 'tolist'):
+            return obj.tolist()
+        return obj
+
+    with open(output_dir / "training_results.json", 'w') as f:
+        json.dump(make_serializable(results), f, indent=2)
 
     logger.info(f"Training artifacts saved to: {output_dir}")
 
