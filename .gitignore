@@ -241,3 +241,15 @@ experiments/
 sandbox/
 scratch/
 notebooks/checkpoints/
+
+# Auto-added by publisher
+# Training artifacts (auto-added by publisher)
+*.onnx
+mlflow.db
+data/*.arrow
+data/*.parquet
+data/*.h5
+data/*.hdf5
+data/raw/
+data/processed/
+.venv/

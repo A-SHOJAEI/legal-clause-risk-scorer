@@ -14,6 +14,15 @@ from .model import (
     count_parameters
 )
 
+from .components import (
+    FocalLoss,
+    MultiTaskLoss,
+    ConsistencyRegularization,
+    LegalDomainLoss,
+    ContextAwareAttention,
+    create_loss_function
+)
+
 __all__ = [
     'LegalClauseRiskModel',
     'AttentionPooling',
@@ -21,5 +30,11 @@ __all__ = [
     'create_model',
     'load_pretrained_model',
     'save_model',
-    'count_parameters'
+    'count_parameters',
+    'FocalLoss',
+    'MultiTaskLoss',
+    'ConsistencyRegularization',
+    'LegalDomainLoss',
+    'ContextAwareAttention',
+    'create_loss_function'
 ]
