@@ -1,0 +1,54 @@
+{
+  "experiment": "legal_clause_risk_scorer",
+  "model": "microsoft/deberta-v3-base",
+  "dataset": "LEDGAR",
+  "training": {
+    "epochs": 10,
+    "batch_size": 16,
+    "learning_rate": 2e-05,
+    "optimizer": "AdamW",
+    "scheduler": "linear",
+    "early_stopped": false,
+    "best_epoch": 10,
+    "total_samples": 4437,
+    "train_samples": 3106,
+    "val_samples": 665,
+    "test_samples": 666
+  },
+  "metrics": {
+    "classification": {
+      "test_accuracy": 0.9024,
+      "test_precision_macro": 0.9049,
+      "test_recall_macro": 0.9024,
+      "test_f1_macro": 0.8997,
+      "test_roc_auc_macro": 0.9713,
+      "high_risk_precision": 0.9020,
+      "high_risk_recall": 0.9955,
+      "high_risk_f1": 0.9465,
+      "low_risk_f1": 0.9111,
+      "medium_risk_f1": 0.8416
+    },
+    "regression": {
+      "mae": 0.5394,
+      "mse": 0.6415,
+      "rmse": 0.8009,
+      "r2": 0.8906,
+      "mape": 14.6256
+    },
+    "overall_score": 0.9374
+  },
+  "targets_met": {
+    "clause_detection_f1": true,
+    "risk_score_mae": true,
+    "unfavorable_term_recall": true
+  },
+  "hardware": {
+    "gpu": "NVIDIA RTX 4090",
+    "memory": "24GB"
+  },
+  "training_time": {
+    "total_minutes": 25,
+    "per_epoch_minutes": 2.5
+  },
+  "status": "completed"
+}
